@@ -1,79 +1,103 @@
 """
-@author: Maziar Raissi
+@author: Chang, responsible for DOI:https://doi.org/10.1063/5.0138287
 """
 import os
+import sys
 import tensorflow as tf
 import numpy as np
 import scipy.io as io
 import time
+import argparse
 
 from utilities_ndm import data_process, HFM
 
+# 随机种子用于复现实验结果 Random seed is used for repeating experiments.
 np.random.seed(3407)
 tf.set_random_seed(3407)
 
 if __name__ == "__main__":
     time0 = time.time()
     # =====================================================================
-    # ||                             0.定义参数                             ||
+    # ||              0.Hyper-parameter defination 定义超参数              ||
     # =====================================================================
-    loss_path = "./tp10-110_dt0.1s_X-x29p_t0-120_N5kT120_bch20w_L10N50_8w"
-    if os.path.exists(loss_path) == False:
-        os.makedirs(loss_path)
-    loss_name = loss_path + "/loss-epoch.dat"
+
+    # 创建解析器接收参数 Create a parser to receive some input parameters
+    parser = argparse.ArgumentParser(description='Receive some input parameters.')
+    parser.add_argument('--debug', type=bool, default=True, help='Debug or not')
+    parser.add_argument('--tp1', type=int, default=0, help='Time block start')
+    parser.add_argument('--tp2', type=int, default=120, help='Time block end')
+
+    # 解析参数 Parsing parameters
+    args = parser.parse_args()
+    
+    if args.debug:
+        log_path = "./tp{}-{}_dt0.1s_X-x29p_t{}-{}_test".format(args.tp1+10, args.tp2-10, args.tp1, args.tp2)
+        # batch_size 注意要能被eqns_Nx * eqns_Ny * eqns_Nt整除 40000
+        # batch_size should be an integer multiple of (eqns_Nx * eqns_Ny * eqns_Nt)
+        batch_size = 40000
+        layers = [3] + 2 * [2] + [3]
+        # 学习率衰减 Learning rate decay.
+        lr = 0.001 # 初始学习率 Initial lr.
+        mm = 1.0 # 学习率峰值衰减率 The decaying ratio of the peak lr.
+        ep = 1000 # 第一个周期的训练代数 Epoch of the first period.
+        tm = 2 # 周期增长率 The growth rate of periods.
+        dn = 6 # 最大衰减周期数 The max periods.
+        # Nt_true是用于训练的快照数，间隔n*dt，Nt_true=Nt/n，Nt是总的快照数
+        # Nt_true is the number of snapshots for training, Nt_true=Nt/n, Nt is the total number of snapshots
+        Nx, Ny, Nt_true = 400, 200, 1100
+    else:
+        log_path = "./tp{}-{}_dt0.1s_X-x29p_t{}-{}".format(args.tp1+10, args.tp2-10, args.tp1, args.tp2)
+        batch_size = 200000
+        layers = [3] + 10 * [50] + [3]
+        lr = 0.001
+        mm = 1.0
+        ep = 1000
+        tm = 2
+        dn = 6
+        Nx, Ny, Nt_true = 400, 200, 1100
+    
+    if os.path.exists(log_path) == False:
+        os.makedirs(log_path)
+    loss_name = log_path + "/loss-epoch.dat"
 
     loss_header = 'iter loss loss_data loss_eqns loss_e1 loss_e2 loss_e3\n'
     with open(loss_name, 'a') as f:
         f.write(loss_header)
 
-    log_name = loss_path + "/PINN_log.txt"
-    pred_path = loss_path + "/Pred_ep{}.mat"
-    NN_path = loss_path + '/Trained_HFM_ep{}/tp1-10.ckpt'
+    log_name = log_path + "/PINN_log.txt"
+    pred_path = log_path + "/Pred_ep{}.mat"
+    NN_path = log_path + '/Trained_HFM_ep{}/tp_NN.ckpt'
 
     Rey = 3900
 
-    mat_path = '../cylinder_Re3900_LES_SpanAvg_NB_X1-9_400x200_1100_ndm.mat' # para
-    # mat_path = 'Z:/cylinder_post/Re4_kwSST_wake_NB_X1-9_Y-2-2_400x200_5500_ndm.mat'  # local
-    # mat_path = 'Z:/cylinder_post/Re2_dt0.02_Snap50_x100y50.mat'
+    # mat_path = '../cylinder_Re3900_LES_SpanAvg_NB_X1-9_400x200_1100_ndm.mat' # para
+    mat_path = 'D:/cylinder_post/cylinder_Re100_lam_X1-9_400x200_5500_ndm.mat'  # local
 
-    # 网络训练参数
-    batch_size = 200000  # 注意要能被eqns_Nx * eqns_Ny * eqns_Nt整除 40000
-    # epochs = 80000  # 84000
-    layers = [3] + 10 * [50] + [3]
-    # layers = [3] + 2 * [2] + [3]  # 调试用
-    # WR 设置
-    lr = 0.001 # initial lr
-    mm = 1.0 # lr峰值衰减率
-    ep = 1000 # 第一个周期
-    tm = 2 # 周期增长率
-    dn = 6 # 周期数
-
-
-    # 训练集参数
-    Nx, Ny, Nt_true = 400, 200, 1100  # Nt_true是从CFD输出间隔dt数据中抽取的间隔n*dt的快照数，n=Nt/Nt_true
-    tp1, tp2 = 0, 120 # 时间分块
+    
+    tp1, tp2 = args.tp1, args.tp2 # 时间分块 Time block
 
     eqns_Nx, eqns_Ny, eqns_Nt = 100, 50, tp2 - tp1
 
     # =====================================================================
-    # ||                             1.前处理                             ||
+    # ||                     1.前处理  preprocess                         ||
     # =====================================================================
 
     DATA = data_process(mat_path, Nx, Ny, Nt_true)
 
-    # =====================时间分块=====================
+    # =====================Time block=====================
     t_tp, u_tp, v_tp, p_tp = DATA.tp(tp1, tp2)
 
-    # =====================数据点布置方式一：根据xy方向上点数均匀布置数据点=====================
-    # data_Nx, data_Ny, data_Nt = 6, 5, tp2 - tp1  # 仅限数据点采用均匀布置!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # =====================数据点布置方式一：根据xy方向上点数均匀布置数据点===================
+    # =====================Sensor placement type 1：Rectangle=====================
+    # data_Nx, data_Ny, data_Nt = 6, 5, tp2 - tp1  # 仅限数据点采用均匀布置(Only use in this placemrnttype)
     # x_data, y_data, t_data, u_data, v_data = DATA.data_uniform(t_tp, u_tp, v_tp, p_tp,
     #                                                            data_Nx, data_Ny, data_Nt)
-
-    # =====================数据点布置方式一：end
+    # =====================数据点布置方式一：结束 Sensor placement type 1: end ===========
 
     # =====================数据点布置方式二：根据点id抽取任意布置的数据点=====================
-    # 给id_ex, 参考最下面的备份
-    # X-x
+    # =====================Sensor placement type 2：Extract by ID =====================
+    # 给id_ex, 参考最下面的备份 The various types of extraction are listed at the end.
+    # Type diamond29 
     id_ex = np.array([[1, 1], [1, 100], [1, 200],
                       [50, 25], [50, 75], [50, 125], [50, 175],
                       [100, 50], [100, 150],
@@ -85,20 +109,20 @@ if __name__ == "__main__":
                       [400, 1], [400, 100], [400, 200]
                       ])-1
     x_data, y_data, t_data, u_data, v_data = DATA.data_ext(t_tp, u_tp, v_tp, p_tp,id_ex)
-    # ******数据点布置方式二：end
+    # ================ 数据点布置方式二：结束 Sensor placement type 2:end==================
 
     print("x_data shape is", x_data.shape)
     print("t_data shape is", t_data.shape)
     print("u_data shape is", u_data.shape)
 
-    # ===============================方程点===============================
+    # =========================== 方程点 Equation points ===============================
     x_eqns, y_eqns, t_eqns = DATA.eqns(t_tp, eqns_Nx, eqns_Ny, eqns_Nt)
     print("x_eqns shape is", x_eqns.shape)
     print("t_eqns shape is", t_eqns.shape)
 
-    # =========================预留用于预测的点=======================
+    # =====================预留用于重构的点 Inputs of reconstruction=======================
     # x_pred, y_pred, t_pred = DATA.x_all, DATA.y_all, DATA.t_all[DATA.tp1:DATA.tp2]
-    x_pred_100, y_pred_100, t_pred_100, N_100, T_100 = DATA.data_pred(t1=10, t2=110,t_jump=1)  # 搞成Tensor了
+    x_pred_100, y_pred_100, t_pred_100, N_100, T_100 = DATA.data_pred(t1=10, t2=110,t_jump=1)  # Tensor
     # x_pred_500, y_pred_500, t_pred_500, N_500, T_500 = DATA.data_pred(t1=50, t2=550, t_jump=1)
     print("x_pred_100 shape is", x_pred_100.shape)
     # print("t_pred_500 shape is", t_pred_500.shape)
@@ -116,17 +140,11 @@ if __name__ == "__main__":
 
 
     # =====================================================================
-    # ||                             2.训练网络                            ||
+    # ||                        2.训练网络 NN training                     ||
     # =====================================================================
     # time0 = time.time()
     # Training
     print("==============================Load HFM=============================")
-    # NB
-    # model = HFM(t_data, x_data, y_data, u_data, v_data,
-    #             t_eqns, x_eqns, y_eqns,
-    #             layers, batch_size,
-    #             Rey,
-    #             lr,ep,tm,mm)
     
     np_lr = np.zeros(dn) + lr
     np_ep = np.zeros(dn) + ep
@@ -159,21 +177,14 @@ if __name__ == "__main__":
             f.write('Training cost {:.3e}s'.format(time1 - time0) + '\n')
     
         # =====================================================================
-        # ||                             3.后处理                            ||
+        # ||                         3.Post process                       ||
         # =====================================================================
         time0 = time.time()
         # ================================预测=================================
         U_pred_dict = model.predict(x_pred_100,y_pred_100,t_pred_100,N_100,T_100)
         io.savemat(pred_path.format(epochs), U_pred_dict)
     
-    
-        # =============================输出损失（简明版本）=============================
-        # a_ep = np.array(model.a_ep)
-        # a_loss = np.array(model.a_loss)
-        # a_lr = np.array(model.a_lr)
-        # l_e = np.concatenate((a_ep.reshape(-1,1),a_loss.reshape(-1,1),a_lr.reshape(-1,1)),axis=1)
-        # np.savetxt(loss_name,l_e)
-        # ============================输出损失（分项输出版本）==============================
+        # ============================ 输出损失 Write loss ==============================
         a_ep = np.array(model.a_ep)
         a_loss = np.array(model.a_loss)
         a_loss_data = np.array(model.a_loss_data)
@@ -215,9 +226,6 @@ if __name__ == "__main__":
     # =====================================================================
     # ||                             4.加载模型预测                            ||
     # =====================================================================
-    #### 把预测部分注释掉执行本部分，否则会使两个HFM模型的名称不一致。或者del掉model亦可？
-    #### 好像又不太行了。。加上tf.reset_default_graph()又行了
-
 
     # 加载模型
     # ============================================查看checkpoint中变量名称================================================
