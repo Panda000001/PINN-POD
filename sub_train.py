@@ -8,12 +8,24 @@ import numpy as np
 import scipy.io as io
 import time
 import argparse
+import h5py
 
 from utilities_ndm import data_process, HFM
 
 # 随机种子用于复现实验结果 Random seed is used for repeating experiments.
 np.random.seed(3407)
 tf.set_random_seed(3407)
+
+def check_signal_Cni(index,T_i):
+    try:
+        with open(f'signal_Cni_{index}_{T_i}.txt', 'r') as f:
+            return f.read()
+    except FileNotFoundError:
+        return 'wait'
+
+def send_signal_Loss(Loss, index, T_i):
+    with open(f'Loss_{index}_T{T_i}.txt', 'w') as f:
+        f.write(Loss)
 
 if __name__ == "__main__":
     time0 = time.time()
@@ -24,27 +36,31 @@ if __name__ == "__main__":
     # 创建解析器接收参数 Create a parser to receive some input parameters
     parser = argparse.ArgumentParser(description='Receive some input parameters.')
     parser.add_argument('--debug', type=bool, default=True, help='Debug or not')
+    parser.add_argument('--index', type=int, default=0, help='sub_process')
     parser.add_argument('--tp1', type=int, default=0, help='Time block start')
     parser.add_argument('--tp2', type=int, default=120, help='Time block end')
 
     # 解析参数 Parsing parameters
     args = parser.parse_args()
-    
+
+    tp1, tp2 = args.tp1, args.tp2
+
     if args.debug:
         log_path = "./tp{}-{}_dt0.1s_X-x29p_t{}-{}_test".format(args.tp1+10, args.tp2-10, args.tp1, args.tp2)
         # batch_size 注意要能被eqns_Nx * eqns_Ny * eqns_Nt整除 40000
         # batch_size should be an integer multiple of (eqns_Nx * eqns_Ny * eqns_Nt)
-        batch_size = 40000
+        batch_size = 6000
         layers = [3] + 2 * [2] + [3]
         # 学习率衰减 Learning rate decay.
         lr = 0.001 # 初始学习率 Initial lr.
         mm = 1.0 # 学习率峰值衰减率 The decaying ratio of the peak lr.
-        ep = 1000 # 第一个周期的训练代数 Epoch of the first period.
+        ep = 10 # 第一个周期的训练代数 Epoch of the first period.
         tm = 2 # 周期增长率 The growth rate of periods.
         dn = 6 # 最大衰减周期数 The max periods.
         # Nt_true是用于训练的快照数，间隔n*dt，Nt_true=Nt/n，Nt是总的快照数
         # Nt_true is the number of snapshots for training, Nt_true=Nt/n, Nt is the total number of snapshots
         Nx, Ny, Nt_true = 400, 200, 1100
+        eqns_Nx, eqns_Ny, eqns_Nt = 10, 5, tp2 - tp1
     else:
         log_path = "./tp{}-{}_dt0.1s_X-x29p_t{}-{}".format(args.tp1+10, args.tp2-10, args.tp1, args.tp2)
         batch_size = 200000
@@ -55,7 +71,9 @@ if __name__ == "__main__":
         tm = 2
         dn = 6
         Nx, Ny, Nt_true = 400, 200, 1100
+        eqns_Nx, eqns_Ny, eqns_Nt = 100, 50, tp2 - tp1
     
+    index = args.index
     if os.path.exists(log_path) == False:
         os.makedirs(log_path)
     loss_name = log_path + "/loss-epoch.dat"
@@ -71,12 +89,7 @@ if __name__ == "__main__":
     Rey = 3900
 
     # mat_path = '../cylinder_Re3900_LES_SpanAvg_NB_X1-9_400x200_1100_ndm.mat' # para
-    mat_path = 'D:/cylinder_post/cylinder_Re100_lam_X1-9_400x200_5500_ndm.mat'  # local
-
-    
-    tp1, tp2 = args.tp1, args.tp2 # 时间分块 Time block
-
-    eqns_Nx, eqns_Ny, eqns_Nt = 100, 50, tp2 - tp1
+    mat_path = 'D:/AI/cylinder_post/cylinder_Re100_lam_X1-9_400x200_5500_ndm.mat'  # local
 
     # =====================================================================
     # ||                     1.前处理  preprocess                         ||
@@ -165,7 +178,7 @@ if __name__ == "__main__":
                     lr, epochs, tm, mm)
         if i>=1:
             model.saver.restore(model.sess, NN_path.format(int(np_ep[i-1])))
-    
+        
         model.train(epochs)
         # print(tf.contrib.framework.get_variables_to_restore())
         model.saver.save(model.sess, NN_path.format(epochs)) # 会自动创建文件夹
@@ -182,7 +195,11 @@ if __name__ == "__main__":
         time0 = time.time()
         # ================================预测=================================
         U_pred_dict = model.predict(x_pred_100,y_pred_100,t_pred_100,N_100,T_100)
-        io.savemat(pred_path.format(epochs), U_pred_dict)
+        # io.savemat(pred_path.format(epochs), U_pred_dict) # save as .mat
+        # 创建一个新的.h5文件
+        with h5py.File(pred_path.format(epochs), 'w') as hf:
+            for key, value in U_pred_dict.items():
+                hf.create_dataset(key, data=value)
     
         # ============================ 输出损失 Write loss ==============================
         a_ep = np.array(model.a_ep)
@@ -221,8 +238,27 @@ if __name__ == "__main__":
         with open(log_name,"a") as f:
             f.write('Output cost {}s'.format(time1-time0) + '\n')
     
+        # def send_signal_Loss(Loss, index, T_i):
+        #   with open(f'Loss_{index}_T{T_i}.txt', 'w') as f:
+        #       f.write(Loss)
+
+        send_signal_Loss(str(a_loss[-1]), index, i)
+
+        while True:
+            signal = check_signal_Cni(index,i)
+            
+            if signal == 'T{}_stop'.format(i):
+                print(f"Process {index} stopping as per the signal.")
+                break
+            elif signal == 'T{}_continue'.format(i):
+                print(f"Process {index} continuing as per the signal.")
+            else:
+                print(f"Process {index} received unknown signal: {signal}")
+            time.sleep(20)
+
         tf.reset_default_graph()
         del model
+
     # =====================================================================
     # ||                             4.加载模型预测                            ||
     # =====================================================================

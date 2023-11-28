@@ -1,6 +1,7 @@
 """
 @author: Maziar Raissi
 """
+import os
 import sys
 import time
 import scipy.io as io
@@ -9,18 +10,48 @@ import numpy as np
 import PyPOD
 
 
-def tf_session():
-    # tf session
+isGPU = False
+
+def tf_session_cpu():
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # 指定不使用GPU
+    
     config = tf.ConfigProto(allow_soft_placement=True,
-                            log_device_placement=True)
-    config.gpu_options.force_gpu_compatible = True
+                            log_device_placement=False) # True will output to terminal
     sess = tf.Session(config=config)
     
-    # init
     init = tf.global_variables_initializer()
     sess.run(init)
     
     return sess
+
+def tf_session_gpu(gpu_index='0'):
+    config = tf.ConfigProto(allow_soft_placement=True,
+                            log_device_placement=False)
+    config.gpu_options.visible_device_list = gpu_index  # True or gpu_index
+    sess = tf.Session(config=config)
+    
+    init = tf.global_variables_initializer()
+    sess.run(init)
+    
+    return sess
+
+if isGPU:
+    tf_session = tf_session_gpu
+else:
+    tf_session = tf_session_cpu
+
+# def tf_session():
+#     # tf session
+#     config = tf.ConfigProto(allow_soft_placement=True,
+#                             log_device_placement=True)
+#     config.gpu_options.force_gpu_compatible = True
+#     sess = tf.Session(config=config)
+    
+#     # init
+#     init = tf.global_variables_initializer()
+#     sess.run(init)
+    
+#     return sess
 
 def relative_error(pred, exact):
     if type(pred) is np.ndarray:
