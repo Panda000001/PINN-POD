@@ -2,8 +2,7 @@
 @author: Chang, responsible for DOI:https://doi.org/10.1063/5.0138287
 """
 import os
-import sys
-import tensorflow as tf
+import tensorflow as tf # TF1.14
 import numpy as np
 import scipy.io as io
 import time
@@ -18,13 +17,13 @@ tf.set_random_seed(3407)
 
 def check_signal_Cni(index,T_i):
     try:
-        with open(f'signal_Cni_{index}_{T_i}.txt', 'r') as f:
+        with open(f'signal_Cni_{index}_T{T_i}.txt', 'r') as f:
             return f.read()
     except FileNotFoundError:
         return 'wait'
 
 def send_signal_Loss(Loss, index, T_i):
-    with open(f'Loss_{index}_T{T_i}.txt', 'w') as f:
+    with open(f'signal_Loss_{index}_T{T_i}.txt', 'w') as f:
         f.write(Loss)
 
 if __name__ == "__main__":
@@ -74,6 +73,7 @@ if __name__ == "__main__":
         eqns_Nx, eqns_Ny, eqns_Nt = 100, 50, tp2 - tp1
     
     index = args.index
+    print("************************ SubNN ", index, " start ************************")
     if os.path.exists(log_path) == False:
         os.makedirs(log_path)
     loss_name = log_path + "/loss-epoch.dat"
@@ -83,7 +83,7 @@ if __name__ == "__main__":
         f.write(loss_header)
 
     log_name = log_path + "/PINN_log.txt"
-    pred_path = log_path + "/Pred_ep{}.mat"
+    pred_path = log_path + "/Pred_ep{}.h5" # .h5 or .mat, corresponds to Part3.Post process 
     NN_path = log_path + '/Trained_HFM_ep{}/tp_NN.ckpt'
 
     Rey = 3900
@@ -184,7 +184,7 @@ if __name__ == "__main__":
         model.saver.save(model.sess, NN_path.format(epochs)) # 会自动创建文件夹
     
         time1 = time.time()
-        print("==============================Training done!=============================")
+        print("=====================SubNN",index," training T",i," done!=============================")
         print("Training cost {:.3e}s".format(time1 - time0) + '\n')
         with open(log_name, "a") as f:
             f.write('Training cost {:.3e}s'.format(time1 - time0) + '\n')
@@ -243,18 +243,20 @@ if __name__ == "__main__":
         #       f.write(Loss)
 
         send_signal_Loss(str(a_loss[-1]), index, i)
-
-        while True:
+        nextPeriod = 0
+        while nextPeriod == 0:
+            # 'signal_Cni_{index}_{T_i}.txt'
             signal = check_signal_Cni(index,i)
-            
+            print("=======SubRefresh: SubNN", index," received signal ", signal)
             if signal == 'T{}_stop'.format(i):
                 print(f"Process {index} stopping as per the signal.")
                 break
             elif signal == 'T{}_continue'.format(i):
                 print(f"Process {index} continuing as per the signal.")
+                nextPeriod = 1
             else:
                 print(f"Process {index} received unknown signal: {signal}")
-            time.sleep(20)
+            time.sleep(30)
 
         tf.reset_default_graph()
         del model

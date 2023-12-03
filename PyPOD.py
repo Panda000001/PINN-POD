@@ -735,7 +735,7 @@ def POD(UV_all):
     Return Eigenvalues,Eigenvectors,phi,ak_t """
     start_time = time.time()
     # mean-subtracted data
-    UV = UV_all - np.mean(UV_all,axis=1)
+    UV = UV_all - np.mean(UV_all,axis=1).reshape(-1, 1)
     # 时间关联矩阵
     C = np.dot(UV.T, UV)
     print("时间关联矩阵的行列式的值是{}。C=0 means 可逆，非奇异矩阵".format(np.linalg.det(C)))  # C=0,可逆，非奇异矩阵

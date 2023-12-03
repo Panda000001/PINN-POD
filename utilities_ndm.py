@@ -26,7 +26,7 @@ def tf_session_cpu():
 
 def tf_session_gpu(gpu_index='0'):
     config = tf.ConfigProto(allow_soft_placement=True,
-                            log_device_placement=False)
+                            log_device_placement=False) # True will output to terminal
     config.gpu_options.visible_device_list = gpu_index  # True or gpu_index
     sess = tf.Session(config=config)
     
@@ -181,7 +181,6 @@ class neural_net_save(object):
         Y = tf.split(H, num_or_size_splits=H.shape[1], axis=1)
     
         return Y
-
 
 class neural_net(object):
     def __init__(self, *inputs, layers):
@@ -339,9 +338,6 @@ def Navier_Stokes_2D_psi(psi, p, t, x, y, Rey, eqns=True):
         NS_dict = {'u':u,'v':v}
 
     return NS_dict 
-
-
-
 
 def Navier_Stokes_2D(u, v, p, t, x, y, Rey):
     

@@ -1,2 +1,5 @@
 /run.sh
 /tp*
+/signal*
+/test*
+/__*
