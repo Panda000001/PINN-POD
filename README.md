@@ -7,11 +7,15 @@ During the training, each sub-network writes out a Loss file and reconstructs th
 The main.py monitors these outputs to calculate the Loss convergence criterion and performs Proper Orthogonal Decomposition (POD) for the modal convergence criterion.
 Based on these criteria, main.py generates a signal file to guide whether sub_train.py should continue training.
 ## Key Components
-`main.py`: The main script that orchestrates the parallel training of PINN sub-networks.  
-`sub_train.py`: Handles the training process of each PINN sub-network.  
-`utilities_ndm.py`: Defines the PINN network structure, inspired by the work available at https://github.com/maziarraissi/HFM.  
-`PyPOD.py`: Contains utility functions used in the paper, such as post-processing, POD, and so on.  
-Data Set: The data set used in the paper is available at this link http://gofile.me/5UAtB/NYzIc5sxJ.
+1. `main.py`: The main script that orchestrates the parallel training of PINN sub-networks.
+`UseGPU = True/False` decides if the process `sub_train.py` runs on a GPU.
+`mainDebug = True/False` decides if debug the `main.py` or not.
+`subDebug = 1/0` decides if debug the `sub_train.py` or not.  
+2. `sub_train.py`: Handles the training process of each PINN sub-network.  
+3. `utilities_ndm.py`: Defines the PINN network structure, inspired by the work available at https://github.com/maziarraissi/HFM.
+`isGPU = True/False` decides if the process `sub_train.py` runs on a GPU, which should be the same as the `UseGPU` in `main.py`.  
+4. `PyPOD.py`: Contains utility functions used in the paper, such as post-processing, POD, and so on.  
+5. Data Set: The data set used in the paper is available at this link http://gofile.me/5UAtB/NYzIc5sxJ.
 ## Getting Started
 To use this framework, follow these steps:  
 ### 1. Clone the Repository  
