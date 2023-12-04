@@ -62,7 +62,7 @@ if __name__ == "__main__":
         eqns_Nx, eqns_Ny, eqns_Nt = 10, 5, tp2 - tp1
     else:
         log_path = "./tp{}-{}_dt0.1s_X-x29p_t{}-{}".format(args.tp1+10, args.tp2-10, args.tp1, args.tp2)
-        batch_size = 200000
+        batch_size = 60000
         layers = [3] + 10 * [50] + [3]
         lr = 0.001
         mm = 1.0
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     Rey = 100
 
     # mat_path = '../cylinder_Re100_lam_X1-9_400x200_5500_ndm.mat' # para
-    mat_path = 'D:/AI/cylinder_post/cylinder_Re100_lam_X1-9_400x200_5500_ndm.mat'  # local
+    mat_path = 'D:/AI/cylinder_post/cylinder_Re100_t1100_Diamond_29p.mat'  # local
 
     # =====================================================================
     # ||                     1.前处理  preprocess                         ||

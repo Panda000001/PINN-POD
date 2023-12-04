@@ -8,28 +8,37 @@ import PyPOD
 import time
 import h5py
 
-# def gpu_process(script_name, gpu_id, other_arg):
-#     return subprocess.Popen(["python", script_name, "--gpu_id", str(gpu_id), "--other_arg", other_arg])
-
-def gpu_process(script_name, gpu_id, other_args, log_file):
-    with open(log_file, 'w') as log:
-        return subprocess.Popen(
-            ["python", script_name, "--gpu_id", str(gpu_id)] + other_args,
-            stdout=log,  # 将标准输出重定向到日志文件
-            stderr=subprocess.STDOUT  # 将错误输出也重定向到同一个日志文件
-        )
-
-# def cpu_process(script_name, args):
-#     cmd = ["python", script_name] + args
-#     return subprocess.Popen(cmd)
+# gpu_process/cpu_process depends on your HPC properties.
+def gpu_process(args_tpi, tp_idx):
+    with open("run_tp{}.sh".format(tp_idx), "w", newline='\n') as file:
+        file.write("#!/bin/bash\n")
+        file.write("#SBATCH -J tp{}\n".format(tp_idx))
+        file.write("#SBATCH -N 1\n")
+        file.write("#SBATCH --gres=dcu:1\n")
+        file.write("#SBATCH -p wzhdnormal\n") # GPU Nodes
+        file.write("#SBATCH --exclusive\n")
+        file.write("source ~/.bashrc\n")
+        file.write("module unload compiler/dtk/21.10\n")
+        file.write("module load compiler/dtk/22.10\n")
+        file.write("conda activate tensorflow-py37\n")
+        file.write("python -u sub_train.py " + args_tpi)
+    subprocess.call(['chmod', '+x', './run_tp{}.sh'.format(tp_idx)])
+    subprocess.call(['sbatch', './run_tp{}.sh'.format(tp_idx)])
 
 def cpu_process(script_name, other_args, log_file):
-    with open(log_file, 'w') as log:
-        return subprocess.Popen(
-            ["python", script_name] + other_args,
-            stdout=log,  # 将标准输出重定向到日志文件
-            stderr=subprocess.STDOUT  # 将错误输出也重定向到同一个日志文件
-        )
+    with open("run_tp{}.sh".format(tp_idx), "w", newline='\n') as file:
+        file.write("#!/bin/bash\n")
+        file.write("#SBATCH -J tp{}\n".format(tp_idx))
+        file.write("#SBATCH -N 1\n")
+        file.write("#SBATCH -p wzhcnormal\n") # CPU Nodes
+        file.write("#SBATCH --exclusive\n")
+        file.write("source ~/.bashrc\n")
+        file.write("module unload compiler/dtk/21.10\n")
+        file.write("module load compiler/dtk/22.10\n")
+        file.write("conda activate tensorflow-py37\n")
+        file.write("python -u sub_train.py " + args_tpi)
+    subprocess.call(['chmod', '+x', './run_tp{}.sh'.format(tp_idx)])
+    subprocess.call(['sbatch', './run_tp{}.sh'.format(tp_idx)])
 
 def Calc_Cni(file_paths, order = 6, N=3):
     try:
@@ -43,7 +52,6 @@ def Calc_Cni(file_paths, order = 6, N=3):
                 v_data.append(np.array(file['v_pred']))
         u_pred = np.hstack(u_data)
         v_pred = np.hstack(v_data)
-        # UV_pred = np.vstack((u_pred,v_pred))
         print("********* Compulting POD *********")
         snaps = u_pred.shape[1]
         print("Total snaps is ",snaps)
@@ -92,48 +100,19 @@ if __name__ == "__main__":
     UseGPU = True
     mainDebug = False
     subDebug = 0 # 0=False,1=True
-    # 定义每个脚本的参数
-    numSubNN = 10
-
-    args_tp0 = ["--debug={}".format(subDebug), "--index=0", "--tp1=0", "--tp2=120"]
-    args_tp1 = ["--debug={}".format(subDebug), "--index=1", "--tp1=100", "--tp2=220"]
-    args_tp2 = ["--debug={}".format(subDebug), "--index=2", "--tp1=200", "--tp2=320"]
-    args_tp3 = ["--debug={}".format(subDebug), "--index=3", "--tp1=300", "--tp2=420"]
-    args_tp4 = ["--debug={}".format(subDebug), "--index=4", "--tp1=400", "--tp2=520"]
-    args_tp5 = ["--debug={}".format(subDebug), "--index=5", "--tp1=500", "--tp2=620"]
-    args_tp6 = ["--debug={}".format(subDebug), "--index=6", "--tp1=600", "--tp2=720"]
-    args_tp7 = ["--debug={}".format(subDebug), "--index=7", "--tp1=700", "--tp2=820"]
-    args_tp8 = ["--debug={}".format(subDebug), "--index=8", "--tp1=800", "--tp2=920"]
-    args_tp9 = ["--debug={}".format(subDebug), "--index=9", "--tp1=900", "--tp2=1020"]
-
     if UseGPU:
         sub_process = gpu_process
-        processes = {
-        "tp0": sub_process("sub_train.py", 0, args_tp0, "log_tp0.log"), 
-        "tp1": sub_process("sub_train.py", 1, args_tp1, "log_tp1.log"),
-        "tp2": sub_process("sub_train.py", 2, args_tp2, "log_tp2.log"),
-        "tp3": sub_process("sub_train.py", 3, args_tp3, "log_tp3.log"),
-        "tp4": sub_process("sub_train.py", 4, args_tp4, "log_tp4.log"),
-        "tp5": sub_process("sub_train.py", 5, args_tp5, "log_tp5.log"),
-        "tp6": sub_process("sub_train.py", 6, args_tp6, "log_tp6.log"),
-        "tp7": sub_process("sub_train.py", 7, args_tp7, "log_tp7.log"),
-        "tp8": sub_process("sub_train.py", 8, args_tp8, "log_tp8.log"),
-        "tp9": sub_process("sub_train.py", 9, args_tp9, "log_tp9.log"),
-        }
     else:
         sub_process = cpu_process
-        processes = {
-        "tp0": sub_process("sub_train.py", args_tp0, "log_tp0.log"), 
-        "tp1": sub_process("sub_train.py", args_tp1, "log_tp1.log"),
-        "tp2": sub_process("sub_train.py", args_tp2, "log_tp2.log"),
-        "tp3": sub_process("sub_train.py", args_tp3, "log_tp3.log"),
-        "tp4": sub_process("sub_train.py", args_tp4, "log_tp4.log"),
-        "tp5": sub_process("sub_train.py", args_tp5, "log_tp5.log"),
-        "tp6": sub_process("sub_train.py", args_tp6, "log_tp6.log"),
-        "tp7": sub_process("sub_train.py", args_tp7, "log_tp7.log"),
-        "tp8": sub_process("sub_train.py", args_tp8, "log_tp8.log"),
-        "tp9": sub_process("sub_train.py", args_tp9, "log_tp9.log"),
-        }
+    # 定义每个脚本的参数
+    numSubNN = 10
+    for tp_idx in range(numSubNN):
+        args_tpi = "--debug={} --index={} --tp1={} --tp2={}".format(subDebug,
+                                                                     tp_idx,
+                                                                     tp_idx*100,
+                                                                     (tp_idx+1)*100+20)
+        sub_process(args_tpi, tp_idx)
+
     tm = 2
     dn_max = 6
     if subDebug==1:
@@ -207,4 +186,4 @@ if __name__ == "__main__":
                     for inx in range(numSubNN):
                         send_signal_Cni('T{}_continue'.format(T_i + 1), inx, T_i + 1)
                     nextPeriod = 1
-            time.sleep(10)
+            time.sleep(60)

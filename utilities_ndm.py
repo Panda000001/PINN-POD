@@ -25,10 +25,10 @@ def tf_session_cpu():
     
     return sess
 
-def tf_session_gpu(gpu_index='0'):
+def tf_session_gpu(): # 1GPU: gpu_index='0'
     config = tf.ConfigProto(allow_soft_placement=True,
                             log_device_placement=False) # True will output to terminal
-    config.gpu_options.visible_device_list = gpu_index  # True or gpu_index
+    # config.gpu_options.visible_device_list = gpu_index  # True or gpu_index
     sess = tf.Session(config=config)
     
     init = tf.global_variables_initializer()
