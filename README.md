@@ -10,7 +10,7 @@ Based on these criteria, main.py generates a signal file to guide whether sub_tr
 `main.py`: The main script that orchestrates the parallel training of PINN sub-networks.  
 `sub_train.py`: Handles the training process of each PINN sub-network.  
 `utilities_ndm.py`: Defines the PINN network structure, inspired by the work available at https://github.com/maziarraissi/HFM.  
-`PyPOD.py`: Contains utility functions used in the paper.  
+`PyPOD.py`: Contains utility functions used in the paper, such as post-processing, POD, and so on.  
 Data Set: The data set used in the paper is available at this link http://gofile.me/5UAtB/NYzIc5sxJ.
 ## Getting Started
 To use this framework, follow these steps:  
