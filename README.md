@@ -29,7 +29,9 @@ Install required Python packages (if any).
 ### 3. Download the Data Set  
 Download the data set from the provided link.  
 Place the data set in the designated directory within the project.
-### 4. Run the Main Program
+### 4. Modify Main Program
+Modify the `gpu_process/cpu_process` in `main.py` according to the properties of your computer/server/HPC
+### 5. Run the Main Program
 ```bash
 python main.py
 ```
