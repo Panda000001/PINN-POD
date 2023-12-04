@@ -29,6 +29,8 @@ Place the data set in the designated directory within the project.
 ```bash
 python main.py
 ```
+## Note
+This part is also the preliminary work of our spatiotemporal parallel physics-informed neural networks, a more efficient framework of spatiotemporal parallel PINN, which is available at https://github.com/Shengfeng233/PINN-MPI.
 ## Citation
 If you find this code useful in your research, please consider citing our paper:
 ```lua
@@ -38,6 +40,16 @@ If you find this code useful in your research, please consider citing our paper:
   journal={Physics of Fluids},
   volume={35},
   number={3},
+  year={2023},
+  publisher={AIP Publishing}
+}
+
+@article{xu2023spatiotemporal,
+  title={Spatiotemporal parallel physics-informed neural networks: A framework to solve inverse problems in fluid mechanics},
+  author={Xu, Shengfeng and Yan, Chang and Zhang, Guangtao and Sun, Zhenxu and Huang, Renfang and Ju, Shengjun and Guo, Dilong and Yang, Guowei},
+  journal={Physics of Fluids},
+  volume={35},
+  number={6},
   year={2023},
   publisher={AIP Publishing}
 }
