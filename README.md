@@ -14,7 +14,7 @@ Based on these criteria, main.py generates a signal file to guide whether sub_tr
 2. `sub_train.py`: Handles the training process of each PINN sub-network.  
 3. `utilities_ndm.py`: Defines the PINN network structure, inspired by the work available at https://github.com/maziarraissi/HFM.
 `isGPU = True/False` decides if the process `sub_train.py` runs on a GPU, which should be the same as the `UseGPU` in `main.py`.  
-4. `PyPOD.py`: Contains utility functions used in the paper, such as post-processing, POD, and so on.  
+4. `PyPOD.py`: Contains utility functions used in the paper, such as pre-processing, post-processing, POD, and so on.  
 5. Data Set: The data set used in the paper is available at this link http://gofile.me/5UAtB/NYzIc5sxJ.
 ## Getting Started
 To use this framework, follow these steps:  
@@ -29,7 +29,9 @@ Install required Python packages (if any).
 ### 3. Download the Data Set  
 Download the data set from the provided link.  
 Place the data set in the designated directory within the project.
-### 4. Run the Main Program
+### 4. Modify Main Program
+Modify the `gpu_process/cpu_process` in `main.py` according to the properties of your computer/server/HPC
+### 5. Run the Main Program
 ```bash
 python main.py
 ```
