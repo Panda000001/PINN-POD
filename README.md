@@ -58,3 +58,8 @@ If you find this code useful in your research, please consider citing our paper:
   publisher={AIP Publishing}
 }
 ```
+## License
+This project is open-sourced under the [MIT License](https://opensource.org/licenses/MIT).
+
+## Acknowledgements
+Special thanks to Raissi Maziar for the inspiration and foundational work in the field of Physics-Informed Neural Networks.
