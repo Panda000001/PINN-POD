@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     # 创建解析器接收参数 Create a parser to receive some input parameters
     parser = argparse.ArgumentParser(description='Receive some input parameters.')
-    parser.add_argument('--debug', type=bool, default=True, help='Debug or not')
+    parser.add_argument('--debug', type=int, choices=[0, 1], help='Debug or not')
     parser.add_argument('--index', type=int, default=0, help='sub_process')
     parser.add_argument('--tp1', type=int, default=0, help='Time block start')
     parser.add_argument('--tp2', type=int, default=120, help='Time block end')
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     tp1, tp2 = args.tp1, args.tp2
 
-    if args.debug:
+    if args.debug==1:
         log_path = "./tp{}-{}_dt0.1s_X-x29p_t{}-{}_test".format(args.tp1+10, args.tp2-10, args.tp1, args.tp2)
         # batch_size 注意要能被eqns_Nx * eqns_Ny * eqns_Nt整除 40000
         # batch_size should be an integer multiple of (eqns_Nx * eqns_Ny * eqns_Nt)
@@ -73,7 +73,8 @@ if __name__ == "__main__":
         eqns_Nx, eqns_Ny, eqns_Nt = 100, 50, tp2 - tp1
     
     index = args.index
-    print("************************ SubNN ", index, " start ************************")
+    print("************************ SubNN ", index, " start, debug=", args.debug,
+          ", tp", args.tp1,"-tp", args.tp2, " ************************")
     if os.path.exists(log_path) == False:
         os.makedirs(log_path)
     loss_name = log_path + "/loss-epoch.dat"
@@ -86,9 +87,9 @@ if __name__ == "__main__":
     pred_path = log_path + "/Pred_ep{}.h5" # .h5 or .mat, corresponds to Part3.Post process 
     NN_path = log_path + '/Trained_HFM_ep{}/tp_NN.ckpt'
 
-    Rey = 3900
+    Rey = 100
 
-    # mat_path = '../cylinder_Re3900_LES_SpanAvg_NB_X1-9_400x200_1100_ndm.mat' # para
+    # mat_path = '../cylinder_Re100_lam_X1-9_400x200_5500_ndm.mat' # para
     mat_path = 'D:/AI/cylinder_post/cylinder_Re100_lam_X1-9_400x200_5500_ndm.mat'  # local
 
     # =====================================================================

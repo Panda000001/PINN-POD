@@ -1,6 +1,7 @@
 """
-@author: Maziar Raissi
+@author: Chang, responsible for DOI:https://doi.org/10.1063/5.0138287
 """
+
 import os
 import sys
 import time
@@ -10,7 +11,7 @@ import numpy as np
 import PyPOD
 
 
-isGPU = False
+isGPU = True # True/False
 
 def tf_session_cpu():
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # 指定不使用GPU
@@ -40,18 +41,6 @@ if isGPU:
 else:
     tf_session = tf_session_cpu
 
-# def tf_session():
-#     # tf session
-#     config = tf.ConfigProto(allow_soft_placement=True,
-#                             log_device_placement=True)
-#     config.gpu_options.force_gpu_compatible = True
-#     sess = tf.Session(config=config)
-    
-#     # init
-#     init = tf.global_variables_initializer()
-#     sess.run(init)
-    
-#     return sess
 
 def relative_error(pred, exact):
     if type(pred) is np.ndarray:

@@ -1,3 +1,7 @@
+"""
+@author: Chang, responsible for DOI:https://doi.org/10.1063/5.0138287
+"""
+
 import subprocess
 import numpy as np
 import PyPOD
@@ -7,10 +11,10 @@ import h5py
 # def gpu_process(script_name, gpu_id, other_arg):
 #     return subprocess.Popen(["python", script_name, "--gpu_id", str(gpu_id), "--other_arg", other_arg])
 
-def gpu_process(script_name, gpu_id, args, log_file):
+def gpu_process(script_name, gpu_id, other_args, log_file):
     with open(log_file, 'w') as log:
         return subprocess.Popen(
-            ["python", script_name, "--gpu_id", str(gpu_id), "--other_arg", args],
+            ["python", script_name, "--gpu_id", str(gpu_id)] + other_args,
             stdout=log,  # 将标准输出重定向到日志文件
             stderr=subprocess.STDOUT  # 将错误输出也重定向到同一个日志文件
         )
@@ -19,10 +23,10 @@ def gpu_process(script_name, gpu_id, args, log_file):
 #     cmd = ["python", script_name] + args
 #     return subprocess.Popen(cmd)
 
-def cpu_process(script_name, args, log_file):
+def cpu_process(script_name, other_args, log_file):
     with open(log_file, 'w') as log:
         return subprocess.Popen(
-            ["python", script_name, "--args", args],
+            ["python", script_name] + other_args,
             stdout=log,  # 将标准输出重定向到日志文件
             stderr=subprocess.STDOUT  # 将错误输出也重定向到同一个日志文件
         )
@@ -85,21 +89,22 @@ def send_signal_Cni(signal_Cni, index, T_i):
 if __name__ == "__main__":
     Cni_converge = 1e-2
     Loss_converge = 1e-3
-    UseGPU = False
-    mainDebug = True
+    UseGPU = True
+    mainDebug = False
+    subDebug = 0 # 0=False,1=True
     # 定义每个脚本的参数
     numSubNN = 10
-    args_tp0 = ["--debug=True", "--index=0", "--tp1=0", "--tp2=120"]
-    args_tp1 = ["--debug=True", "--index=1", "--tp1=100", "--tp2=220"]
-    args_tp2 = ["--debug=True", "--index=2", "--tp1=200", "--tp2=320"]
-    args_tp3 = ["--debug=True", "--index=3", "--tp1=300", "--tp2=420"]
-    args_tp4 = ["--debug=True", "--index=4", "--tp1=400", "--tp2=520"]
-    args_tp5 = ["--debug=True", "--index=5", "--tp1=500", "--tp2=620"]
-    args_tp6 = ["--debug=True", "--index=6", "--tp1=600", "--tp2=720"]
-    args_tp7 = ["--debug=True", "--index=7", "--tp1=700", "--tp2=820"]
-    args_tp8 = ["--debug=True", "--index=8", "--tp1=800", "--tp2=920"]
-    args_tp9 = ["--debug=True", "--index=9", "--tp1=900", "--tp2=1020"]
-    
+
+    args_tp0 = ["--debug={}".format(subDebug), "--index=0", "--tp1=0", "--tp2=120"]
+    args_tp1 = ["--debug={}".format(subDebug), "--index=1", "--tp1=100", "--tp2=220"]
+    args_tp2 = ["--debug={}".format(subDebug), "--index=2", "--tp1=200", "--tp2=320"]
+    args_tp3 = ["--debug={}".format(subDebug), "--index=3", "--tp1=300", "--tp2=420"]
+    args_tp4 = ["--debug={}".format(subDebug), "--index=4", "--tp1=400", "--tp2=520"]
+    args_tp5 = ["--debug={}".format(subDebug), "--index=5", "--tp1=500", "--tp2=620"]
+    args_tp6 = ["--debug={}".format(subDebug), "--index=6", "--tp1=600", "--tp2=720"]
+    args_tp7 = ["--debug={}".format(subDebug), "--index=7", "--tp1=700", "--tp2=820"]
+    args_tp8 = ["--debug={}".format(subDebug), "--index=8", "--tp1=800", "--tp2=920"]
+    args_tp9 = ["--debug={}".format(subDebug), "--index=9", "--tp1=900", "--tp2=1020"]
 
     if UseGPU:
         sub_process = gpu_process
@@ -131,7 +136,10 @@ if __name__ == "__main__":
         }
     tm = 2
     dn_max = 6
-    ep = 10
+    if subDebug==1:
+        ep = 10
+    else:
+        ep = 1000
     np_ep = np.zeros(dn_max) + ep
     for i in range(1, dn_max):
         ep =  tm * ep
@@ -142,11 +150,11 @@ if __name__ == "__main__":
         nextPeriod = 0
         file_paths = []
         if mainDebug:
-            for i in range(0,4,1):
+            for i in range(0,numSubNN,1):
                 file_paths.append("./tp{}-{}_dt0.1s_X-x29p_t{}-{}_test".format(i*100+10, ((i+1)*100+20)-10, i*100, ((i+1)*100+20))
                                   + "/Pred_ep{}.h5".format(int(np_ep[T_i])))
         else:
-            for i in range(0,4,1):
+            for i in range(0,numSubNN,1):
                 file_paths.append("./tp{}-{}_dt0.1s_X-x29p_t{}-{}".format(i*100+10, ((i+1)*100+20)-10, i*100, ((i+1)*100+20))
                                   + "/Pred_ep{}.h5".format(int(np_ep[T_i])))
         loss_path = []
@@ -168,48 +176,35 @@ if __name__ == "__main__":
                 if (str(Cni) != "wait") and (str(loss_Ti) != "wait"):
                     # Case 0-1 T0已完成, 更新下一周期的Cni文件
                     print("*******Get Cni and loss_Ti*******")
+                    print("Case 0-1 T", T_i, ": ", "pass. so start next peroid Cni_T",T_i+1,".")
                     for inx in range(numSubNN):
-                        print("T", T_i, ": ", "pass. so start next peroid Cni_T",T_i+1,".")
                         send_signal_Cni('T{}_continue'.format(T_i+1), inx, T_i+1)
                     nextPeriod = 1
                 else:
+                    print("Case 0-2 T", T_i, ": ", "waiting. Cni_T",T_i," is continue")
                     # Case 0-1 T0还没完成, 保持T0周期的Cni文件
                     for inx in range(numSubNN):
-                        print("T", T_i, ": ", "waiting. Cni_T",T_i," is continue")
                         send_signal_Cni('T{}_continue'.format(T_i), inx, T_i)
                 
             else: # The rest peroids, continue 剩余的周期，判断
                 if (str(Cni) == "wait") or (str(loss_Ti) == "wait"):
                     # Case 1 至少一个收敛判据在等待计算, 保持当前周期的Cni文件
+                    print("Case 1, T ", T_i, ": ", "waiting. Cni or delta Loss are waiting for computing.")
                     for inx in range(numSubNN):
-                        print("Case 1, T ", T_i, ": ", "waiting. Cni or delta Loss are waiting for computing.")
                         send_signal_Cni('T{}_continue'.format(T_i), inx, T_i)
                 elif (float(Cni) <= Cni_converge) and (np.abs(Loss[T_i]-Loss[T_i-1]) <= Loss_converge):
                     # Case 2 两个收敛判据同时满足, 更新下一周期的Cni文件为stop
-                    for inx in range(numSubNN):
-                        print("Case 2, T ", T_i, ": ", "stop. Cni and Loss are satisfied, so stop.\n",
+                    print("Case 2, T ", T_i, ": ", "stop. Cni and Loss are satisfied, so stop.\n",
                               "    Cni is ", Cni, ", delta Loss is ", np.abs(Loss[T_i]-Loss[T_i-1]))
+                    for inx in range(numSubNN):
                         send_signal_Cni('T{}_stop'.format(T_i + 1), inx, T_i + 1)
                     nextPeriod = 1
                     break
                 else:
                     # Case 3 两个收敛判据还没有同时满足, 更新下一周期的Cni文件
-                    for inx in range(numSubNN):
-                        print("Case 3, T ", T_i, ": ", "pass. Cni and Loss are not both satisfied, so start next peroid.\n",
+                    print("Case 3, T ", T_i, ": ", "pass. Cni and Loss are not both satisfied, so start next peroid.\n",
                               "    Cni is ", Cni, ", delta Loss is ", np.abs(Loss[-1]-Loss[-2]))
+                    for inx in range(numSubNN):
                         send_signal_Cni('T{}_continue'.format(T_i + 1), inx, T_i + 1)
                     nextPeriod = 1
             time.sleep(10)
-
-# with open(f'signal_{index}_T{T_i}.txt', 'w') as f:
-#        f.write(signal)
-# def Calc_Loss(file_paths):
-#     try:
-#         Loss = []
-#         for path in file_paths:
-#             with open(path, "r") as f:
-#                 Loss.append(f.read())
-#         Loss_avg = np.mean(Loss)
-#         return Loss_avg
-#     except FileNotFoundError:
-#         return "wait"
